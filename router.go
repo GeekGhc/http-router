@@ -6,8 +6,7 @@ import (
 	"sync"
 )
 
-// Handle is a function that can be registered to a route to handle HTTP request
-// Like http.HandleFunc, but has a third parameter for the values of wildcards
+// 路由处理func,包含路由第三方参数
 type Handle func(http.ResponseWriter, *http.Request, Params)
 
 // Param is a single URL parameter,consisting of a key and a value
@@ -41,9 +40,18 @@ func ParamsFromContext(ctx context.Context) Params {
 	return p
 }
 
+// 路由匹配后的参数名称
+var MatchedRoutePathParam = "$matchedRoutePath"
+
+func (ps Params) MatchedRoutePath() string {
+	return ps.ByName(MatchedRoutePathParam)
+}
+
 // Router is a http.Handler which can be used to dispatch request to different
 // handler functions via configurable routes
 type Router struct {
+	trees map[string]*node
+
 	paramsPool sync.Pool
 	maxParams  uint16
 
@@ -83,5 +91,82 @@ func New() *Router {
 		RedirectFixedPath:      true,
 		HandleMethodNotAllowed: true,
 		HandleOPTIONS:          true,
+	}
+}
+
+// get路由参数
+func (r *Router) getParams() *Params {
+	ps, _ := r.paramsPool.Get().(*Params)
+	*ps = (*ps)[0:0] //reset slice
+	return ps
+}
+
+// set路由参数
+func (r *Router) putParams(ps *Params) {
+	if ps != nil {
+		r.paramsPool.Put(ps)
+	}
+}
+
+func (r *Router) saveMatchedRoutePath(path string, handle Handle) Handle {
+	return func(w http.ResponseWriter, req *http.Request, ps Params) {
+		if ps == nil {
+			psp := r.getParams()
+			ps = (*psp)[0:1]
+			ps[0] = Param{Key: MatchedRoutePathParam, Value: path}
+			handle(w, req, ps)
+			r.putParams(psp)
+		} else {
+			ps = append(ps, Param{Key: MatchedRoutePathParam, Value: path})
+			handle(w, req, ps)
+		}
+	}
+}
+
+func (r *Router) GET(path string, handle Handle) {
+	r.Handle(http.MethodGet, path, handle)
+}
+
+func (r *Router) Handle(method, path string, handle Handle) {
+	varsCount := uint16(0)
+
+	// 基本校验
+	if method == "" {
+		panic("method must not be empty")
+	}
+	if len(path) < 1 || path[0] != '/' {
+		panic("path must begin with '/' in path '" + path + "'")
+	}
+	if handle == nil {
+		panic("handle must not be nil")
+	}
+	// 保存路由信息
+	if r.SaveMatchedRoutePath {
+		varsCount++
+		handle = r.saveMatchedRoutePath(path, handle)
+	}
+	if r.trees == nil {
+		r.trees = make(map[string]*node)
+	}
+
+	root := r.trees[method]
+	if root == nil {
+		root = new(node)
+		r.trees[method] = root
+
+		//r.globalAllowed = r
+	}
+
+	// update maxParams
+	if paramsCount := countParams(path); paramsCount+varsCount > r.maxParams {
+		r.maxParams = paramsCount + varsCount
+	}
+
+	// Lazy-Init paramsPool alloc func
+	if r.paramsPool.New == nil && r.maxParams > 0 {
+		r.paramsPool.New = func() interface{} {
+			ps := make(Params, 0, r.maxParams)
+			return &ps
+		}
 	}
 }
