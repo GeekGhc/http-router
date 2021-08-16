@@ -49,3 +49,19 @@ func findWildcard(path string) (wildcard string, i int, valid bool) {
 	}
 	return "", -1, false
 }
+
+// 字节数组向左移动
+func shiftNRuneBytes(rb [4]byte, n int) [4]byte {
+	switch n {
+	case 0:
+		return rb
+	case 1:
+		return [4]byte{rb[1], rb[2], rb[3]}
+	case 2:
+		return [4]byte{rb[2], rb[3]}
+	case 3:
+		return [4]byte{rb[3]}
+	default:
+		return [4]byte{}
+	}
+}
