@@ -54,6 +54,7 @@ func (n *node) addRoute(path string, handle Handle) {
 
 	// tree:空
 	if n.path == "" && n.indices == "" {
+		n.insertChild(path, fullPath, handle)
 		// 作为根节点
 		n.nType = root
 		return
@@ -132,6 +133,7 @@ walk:
 				n.incrementChildPrio(len(n.indices) - 1)
 				n = child
 			}
+			n.insertChild(path, fullPath, handle)
 			return
 		}
 
@@ -439,7 +441,7 @@ walk: // Outer loop for walking the tree
 					// Runes are up to 4 byte long,
 					// -4 would definitely be another rune.
 					var off int
-					for max := min(npLen, 3); off < max; off++ {
+					for max := minElem(npLen, 3); off < max; off++ {
 						if i := npLen - off; utf8.RuneStart(oldPath[i]) {
 							// read rune from cached path
 							rv, _ = utf8.DecodeRuneInString(oldPath[i:])
