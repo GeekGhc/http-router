@@ -1,5 +1,6 @@
 package http_router
 
+// 统计':','*'个数
 func countParams(path string) uint16 {
 	var n uint
 	for i := range []byte(path) {
@@ -11,6 +12,7 @@ func countParams(path string) uint16 {
 	return uint16(n)
 }
 
+// 返回最小值
 func minElem(a, b int) int {
 	if a <= b {
 		return a
