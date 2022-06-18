@@ -6,10 +6,12 @@ import (
 	"sync"
 )
 
-// 路由处理func,包含路由第三方参数
+// Handle is a function that can be registered to a route to handle HTTP
+// 路由注册的Func
 type Handle func(http.ResponseWriter, *http.Request, Params)
 
 // Param is a single URL parameter,consisting of a key and a value
+// URL参数，由一个key和value组成
 type Param struct {
 	Key   string
 	Value string
@@ -18,8 +20,9 @@ type Param struct {
 // Params is a Param-slice, as returned by the router
 type Params []Param
 
-// ByName returns the value of the first Param which key matches the given name
-func (ps Params) ByName(name string) string {
+// GetValueByName returns the value of the first Param which key matches the given name
+// 通过name返回第一个命中参数Key的值
+func (ps Params) GetValueByName(name string) string {
 	for _, p := range ps {
 		if p.Key == name {
 			return p.Value
@@ -28,9 +31,14 @@ func (ps Params) ByName(name string) string {
 	return ""
 }
 
+func (ps Params) MatchedRoutePath() string {
+	return ps.GetValueByName(MatchedRoutePathParam)
+}
+
 type paramsKey struct{}
 
-// ParamKey is the request context key under which URL params are stored
+// ParamsKey is the request context key under which URL params are stored
+// 存储URL参数的请求上下文键
 var ParamsKey = paramsKey{}
 
 // ParamsFromContext pulls the URL parameters from a request context
@@ -40,12 +48,8 @@ func ParamsFromContext(ctx context.Context) Params {
 	return p
 }
 
-// 路由匹配后的参数名称
+// MatchedRoutePathParam 路由匹配后的参数名称
 var MatchedRoutePathParam = "$matchedRoutePath"
-
-func (ps Params) MatchedRoutePath() string {
-	return ps.ByName(MatchedRoutePathParam)
-}
 
 // Router is a http.Handler which can be used to dispatch request to different
 // handler functions via configurable routes
@@ -213,7 +217,7 @@ func (r *Router) ServeFiles(path string, root http.FileSystem) {
 	fileServer := http.FileServer(root)
 
 	r.GET(path, func(w http.ResponseWriter, req *http.Request, ps Params) {
-		req.URL.Path = ps.ByName("filepath")
+		req.URL.Path = ps.GetValueByName("filepath")
 		fileServer.ServeHTTP(w, req)
 	})
 }

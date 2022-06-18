@@ -15,7 +15,7 @@ const (
 	catchAll
 )
 
-// 路由节点
+// path路由节点
 type node struct {
 	path      string // 节点路由
 	indices   string // 节点索引
@@ -27,13 +27,13 @@ type node struct {
 }
 
 // 调整孩子节点优先级
-func (n *node) incrementChildPrio(pos int) int {
+func (n *node) incrementChildPriority(pos int) int {
 	cs := n.children
 	cs[pos].priority++
-	prio := cs[pos].priority
+	priority := cs[pos].priority
 
 	newPos := pos
-	for ; newPos > 0 && cs[newPos-1].priority < prio; newPos-- {
+	for ; newPos > 0 && cs[newPos-1].priority < priority; newPos-- {
 		// 交换节点
 		cs[newPos-1], cs[newPos] = cs[newPos], cs[newPos-1]
 	}
@@ -119,7 +119,7 @@ walk:
 			// 检查是否存在下个路径
 			for i, c := range []byte(n.indices) {
 				if c == idxc {
-					i = n.incrementChildPrio(i)
+					i = n.incrementChildPriority(i)
 					n = n.children[i]
 					continue walk
 				}
@@ -130,7 +130,7 @@ walk:
 				n.indices += string([]byte{idxc})
 				child := &node{}
 				n.children = append(n.children, child)
-				n.incrementChildPrio(len(n.indices) - 1)
+				n.incrementChildPriority(len(n.indices) - 1)
 				n = child
 			}
 			n.insertChild(path, fullPath, handle)
