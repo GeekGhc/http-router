@@ -6,6 +6,10 @@ import (
 	"sync"
 )
 
+// e: router.GET("/hello/a/:name", Hello)
+// e: router.POST("/hello/a/:name", Hello)
+// e: router.POST("/hello/a/*", Hello)
+
 // Handle is a function that can be registered to a route to handle HTTP
 // 路由注册的Func
 type Handle func(http.ResponseWriter, *http.Request, Params)
@@ -20,9 +24,9 @@ type Param struct {
 // Params is a Param-slice, as returned by the router
 type Params []Param
 
-// GetValueByName returns the value of the first Param which key matches the given name
+// ByName returns the value of the first Param which key matches the given name
 // 通过name返回第一个命中参数Key的值
-func (ps Params) GetValueByName(name string) string {
+func (ps Params) ByName(name string) string {
 	for _, p := range ps {
 		if p.Key == name {
 			return p.Value
@@ -32,7 +36,7 @@ func (ps Params) GetValueByName(name string) string {
 }
 
 func (ps Params) MatchedRoutePath() string {
-	return ps.GetValueByName(MatchedRoutePathParam)
+	return ps.ByName(MatchedRoutePathParam)
 }
 
 type paramsKey struct{}
@@ -112,6 +116,8 @@ func (r *Router) putParams(ps *Params) {
 	}
 }
 
+// 保存路由信息
+// e: Param:{ '$matchedRoutePath': '/Hello/:name'}
 func (r *Router) saveMatchedRoutePath(path string, handle Handle) Handle {
 	return func(w http.ResponseWriter, req *http.Request, ps Params) {
 		if ps == nil {
@@ -127,6 +133,7 @@ func (r *Router) saveMatchedRoutePath(path string, handle Handle) Handle {
 	}
 }
 
+// HEAD 路由常用方法
 func (r *Router) HEAD(path string, handle Handle) {
 	r.Handle(http.MethodHead, path, handle)
 }
@@ -167,6 +174,7 @@ func (r *Router) Handle(method, path string, handle Handle) {
 		varsCount++
 		handle = r.saveMatchedRoutePath(path, handle)
 	}
+	// 构建节点树
 	if r.trees == nil {
 		r.trees = make(map[string]*node)
 	}
@@ -217,7 +225,7 @@ func (r *Router) ServeFiles(path string, root http.FileSystem) {
 	fileServer := http.FileServer(root)
 
 	r.GET(path, func(w http.ResponseWriter, req *http.Request, ps Params) {
-		req.URL.Path = ps.GetValueByName("filepath")
+		req.URL.Path = ps.ByName("filepath")
 		fileServer.ServeHTTP(w, req)
 	})
 }
